@@ -20,15 +20,6 @@ on post-fs
     chown system system /dev/ttyMT2
 
     # STP, SDIO, WMT, GPS, FM and BT Driver
-#   insmod /system/lib/modules/mtk_hif_sdio.ko
-#   insmod /system/lib/modules/mtk_stp_wmt.ko
-#   insmod /system/lib/modules/mtk_stp_uart.ko
-#   insmod /system/lib/modules/mtk_stp_gps.ko
-#   insmod /system/lib/modules/mtk_stp_bt.ko
-#   insmod /system/lib/modules/mtk_fm_drv.ko
-#   insmod /system/lib/modules/mtk_fm_priv.ko
-#   insmod /system/lib/modules/mtk_wmt_wifi.ko
-
     insmod /system/lib/modules/mtk_wmt_detect.ko
     
     # Create char device file for WMT, GPS, BT, FM, WIFI
@@ -39,7 +30,7 @@ on post-fs
     chmod 0660 /dev/stpwmt
     chown system system /dev/stpwmt
     chmod 0660 /dev/wmtdetect
- 		chown system system /dev/wmtdetect
+    chown system system /dev/wmtdetect
  		
     # FM Radio device, FIXME: this is not a proper way to set permissions
     chmod 0666 /dev/fm
@@ -50,15 +41,11 @@ on post-fs
     chmod 0660 /dev/stpbt
     chown bluetooth radio /dev/stpbt
     
-    # Load WiFi Driver
-    #insmod /system/lib/modules/wlan.ko
-
 #
 # Connectivity related modules and character device nodes (Ends)
 #
 
 on boot
-
 
 #
 # Connectivity related services (Begin)
