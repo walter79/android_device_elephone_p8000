@@ -24,11 +24,8 @@
     <!-- Enable the electron beam -->
     <bool name="config_animateScreenLights">true</bool>
 
-    <!-- Does the notification LED support multiple colors? Used to decide if the user can change the colors -->
-    <bool name="config_multiColorNotificationLed">false</bool>
-
-    <!-- Does the battery LED support multiple colors? Used to decide if the user can change the colors -->
-    <bool name="config_multiColorBatteryLed">false</bool>
+    <!-- Shutdown if the battery temperature exceeds (this value * 0.1) Celsius. -->
+    <integer name="config_shutdownBatteryTemperature">700</integer>
     
     <!-- Device configuration setting the minfree tunable in the lowmemorykiller in the
          kernel. A high value will cause the lowmemorykiller to fire earlier, keeping more
@@ -78,13 +75,6 @@
     <string-array translatable="false" name="config_tether_usb_regexs">
         <item>"rndis\\d"</item>
     </string-array>
-    <string-array translatable="false" name="config_tether_bluetooth_regexs">
-    <item>"bt-pan"</item>
-    <item>"bt-dun"</item>
-    </string-array>
-
-<!-- Shutdown if the battery temperature exceeds (this value * 0.1) Celsius. -->
-<integer name="config_shutdownBatteryTemperature">700</integer>
 
     <!-- List of regexpressions describing the interface (if any) that represent tetherable
          Wifi interfaces.  If the device doesn't want to support tethering over Wifi this
