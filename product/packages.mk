@@ -39,6 +39,7 @@ PRODUCT_PACKAGES += \
     dhcpcd.conf \
     libwpa_client \
     hostapd \
+    hostapd_cli \
     wpa_supplicant
 
 # USB
@@ -67,3 +68,9 @@ PRODUCT_PACKAGES += \
     libtinyalsa \
     libtinycompress \
     libtinyxml
+
+# FM
+PRODUCT_PACKAGES += \
+    libfmjni \
+    FMRadio
+
