@@ -36,3 +36,16 @@ Elexogic
 walter79
 
 And everyone who contributed :) !
+
+Building TWRP !
+
+edit product/twrp.mk
+
+change # RECOVERY_VARIANT := twrp to RECOVERY_VARIANT := twrp
+
+and add this to you local_manifest
+
+<project path="external/busybox" name="omnirom/android_external_busybox" revision="android-7.1" />
+<project path="bootable/recovery-twrp" name="omnirom/android_bootable_recovery" revision="android-7.1"/>
+
+t
