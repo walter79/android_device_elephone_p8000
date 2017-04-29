@@ -1,0 +1,32 @@
+From 17bd13303e6f4716f06916f33c7172499ed11083 Mon Sep 17 00:00:00 2001
+From: Wang Xuerui <idontknw.wang@gmail.com>
+Date: Thu, 7 Jan 2016 15:24:09 +0800
+Subject: [PATCH] OMXNodeInstance: fix compatibility with MTK blob
+
+Change-Id: I654cfadaaa44ef4ea6b9433db3212453db386877
+---
+ media/libstagefright/omx/OMXNodeInstance.cpp | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/media/libstagefright/omx/OMXNodeInstance.cpp b/media/libstagefright/omx/OMXNodeInstance.cpp
+index ea282d5..ce3726a 100644
+--- a/media/libstagefright/omx/OMXNodeInstance.cpp
++++ b/media/libstagefright/omx/OMXNodeInstance.cpp
+@@ -218,10 +218,14 @@ OMXNodeInstance::OMXNodeInstance(
+     : mOwner(owner),
+       mNodeID(0),
+       mHandle(NULL),
++#ifndef USE_LEGACY_MTK_AV_BLOB
+       mObserver(observer),
+       mSailed(false),
+       mQueriedProhibitedExtensions(false),
+       mBufferIDCount(0)
++#else
++      mObserver(observer)
++#endif
+ {
+     mName = ADebug::GetDebugName(name);
+     DEBUG = ADebug::GetDebugLevelFromProperty(name, "debug.stagefright.omx-debug");
+-- 
+2.9.3
+

@@ -1,0 +1,47 @@
+From 245fd4053618ea70e749a7f0a39749398acc252e Mon Sep 17 00:00:00 2001
+From: fire855 <thefire855@gmail.com>
+Date: Tue, 19 Apr 2016 20:17:57 +0200
+Subject: [PATCH] Fix egl problems (game crash)
+
+Change-Id: I095126e5c142293d8507a7d00845da6b8b477397
+---
+ opengl/libs/EGL/eglApi.cpp | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/opengl/libs/EGL/eglApi.cpp b/opengl/libs/EGL/eglApi.cpp
+index 2f6bc79..c0e6054 100644
+--- a/opengl/libs/EGL/eglApi.cpp
++++ b/opengl/libs/EGL/eglApi.cpp
+@@ -151,11 +151,13 @@ static const extention_map_t sExtensionMap[] = {
+     { "eglGetSyncAttribKHR",
+             (__eglMustCastToProperFunctionPointerType)&eglGetSyncAttribKHR },
+ 
++#ifndef MTK_HARDWARE
+     // EGL_NV_system_time
+     { "eglGetSystemTimeFrequencyNV",
+             (__eglMustCastToProperFunctionPointerType)&eglGetSystemTimeFrequencyNV },
+     { "eglGetSystemTimeNV",
+             (__eglMustCastToProperFunctionPointerType)&eglGetSystemTimeNV },
++#endif
+ 
+     // EGL_KHR_wait_sync
+     { "eglWaitSyncKHR",
+@@ -1835,6 +1837,7 @@ EGLBoolean eglPresentationTimeANDROID(EGLDisplay dpy, EGLSurface surface,
+ // ----------------------------------------------------------------------------
+ // NVIDIA extensions
+ // ----------------------------------------------------------------------------
++#ifndef MTK_HARDWARE
+ EGLuint64NV eglGetSystemTimeFrequencyNV()
+ {
+     clearError();
+@@ -1870,6 +1873,7 @@ EGLuint64NV eglGetSystemTimeNV()
+ 
+     return setErrorQuiet(EGL_BAD_DISPLAY, 0);
+ }
++#endif
+ 
+ // ----------------------------------------------------------------------------
+ // Partial update extension
+-- 
+2.9.3
+

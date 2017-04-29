@@ -1,0 +1,72 @@
+From 65efd752ed0a8d2ac3c0e7737749b4df7c0507ca Mon Sep 17 00:00:00 2001
+From: Mister Oyster <oysterized@gmail.com>
+Date: Mon, 19 Dec 2016 17:08:14 +0100
+Subject: [PATCH] Mtk: camera: add SNAPSHOT_PICTURE_FLIP
+
+---
+ camera/CameraParameters.cpp       | 15 +++++++++++++++
+ include/camera/CameraParameters.h |  8 ++++++++
+ 2 files changed, 23 insertions(+)
+
+diff --git a/camera/CameraParameters.cpp b/camera/CameraParameters.cpp
+index 42b0884..e47a1fb 100644
+--- a/camera/CameraParameters.cpp
++++ b/camera/CameraParameters.cpp
+@@ -37,6 +37,9 @@ const char CameraParameters::KEY_SUPPORTED_PREVIEW_FPS_RANGE[] = "preview-fps-ra
+ const char CameraParameters::KEY_PICTURE_SIZE[] = "picture-size";
+ const char CameraParameters::KEY_SUPPORTED_PICTURE_SIZES[] = "picture-size-values";
+ const char CameraParameters::KEY_PICTURE_FORMAT[] = "picture-format";
++#ifdef MTK_HARDWARE
++const char CameraParameters::SNAPSHOT_PICTURE_FLIP[] = "snapshot-picture-flip";//add by xueweifeng
++#endif
+ const char CameraParameters::KEY_SUPPORTED_PICTURE_FORMATS[] = "picture-format-values";
+ const char CameraParameters::KEY_JPEG_THUMBNAIL_WIDTH[] = "jpeg-thumbnail-width";
+ const char CameraParameters::KEY_JPEG_THUMBNAIL_HEIGHT[] = "jpeg-thumbnail-height";
+@@ -473,6 +476,18 @@ const char *CameraParameters::getPictureFormat() const
+     return get(KEY_PICTURE_FORMAT);
+ }
+ 
++#ifdef MTK_HARDWARE
++void CameraParameters::setCameraPictureFlip(const int format)
++{
++    set(SNAPSHOT_PICTURE_FLIP, format);
++}
++
++const int CameraParameters::getCameraPictureFlip() const
++{
++    return getInt(SNAPSHOT_PICTURE_FLIP);
++}
++#endif
++
+ void CameraParameters::dump() const
+ {
+     ALOGD("dump: mMap.size = %zu", mMap.size());
+diff --git a/include/camera/CameraParameters.h b/include/camera/CameraParameters.h
+index d85050d..27550eb 100644
+--- a/include/camera/CameraParameters.h
++++ b/include/camera/CameraParameters.h
+@@ -100,6 +100,11 @@ public:
+     void setPictureFormat(const char *format);
+     const char *getPictureFormat() const;
+ 
++#ifdef MTK_HARDWARE
++    void setCameraPictureFlip(const int format);
++    const int getCameraPictureFlip() const;
++#endif
++
+     void dump() const;
+     status_t dump(int fd, const Vector<String16>& args) const;
+ 
+@@ -162,6 +167,9 @@ public:
+     // Example value: "jpeg" or PIXEL_FORMAT_XXX constants. Read/write.
+     static const char KEY_PICTURE_FORMAT[];
+     // Supported image formats for captured pictures.
++#ifdef MTK_HARDWARE
++    static const char SNAPSHOT_PICTURE_FLIP[];//add by xueweifeng
++#endif
+     // Example value: "jpeg,rgb565". Read only.
+     static const char KEY_SUPPORTED_PICTURE_FORMATS[];
+     // The width (in pixels) of EXIF thumbnail in Jpeg picture.
+-- 
+2.9.3
+

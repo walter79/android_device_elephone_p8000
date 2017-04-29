@@ -1,0 +1,33 @@
+From a7d2c52f215d6f1afad76df0bbc64fe29ade51aa Mon Sep 17 00:00:00 2001
+From: countstarlight <countstarlight@outlook.com>
+Date: Fri, 29 Jul 2016 13:50:25 +0800
+Subject: [PATCH] Fix some mistakes like 'cast from pointer to smaller type...'
+ about type OMX::buffer_id in media/libstagefright/omx/OMXNodeInstance.cpp.
+
+---
+ media/libstagefright/omx/OMXNodeInstance.cpp | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/media/libstagefright/omx/OMXNodeInstance.cpp b/media/libstagefright/omx/OMXNodeInstance.cpp
+index 6591e28..5ab12cd 100644
+--- a/media/libstagefright/omx/OMXNodeInstance.cpp
++++ b/media/libstagefright/omx/OMXNodeInstance.cpp
+@@ -1670,15 +1670,15 @@ void OMXNodeInstance::invalidateBufferID(OMX::buffer_id buffer) {
+ #else
+ 
+ OMX::buffer_id OMXNodeInstance::makeBufferID(OMX_BUFFERHEADERTYPE *bufferHeader) {
+-    return (OMX::buffer_id)bufferHeader;
++    return (OMX::buffer_id)(size_t)bufferHeader;
+ }
+ 
+ OMX_BUFFERHEADERTYPE *OMXNodeInstance::findBufferHeader(OMX::buffer_id buffer) {
+-    return (OMX_BUFFERHEADERTYPE *)buffer;
++    return (OMX_BUFFERHEADERTYPE *)(size_t)buffer;
+ }
+ 
+ OMX::buffer_id OMXNodeInstance::findBufferID(OMX_BUFFERHEADERTYPE *bufferHeader) {
+-    return (OMX::buffer_id)bufferHeader;
++    return (OMX::buffer_id)(size_t)bufferHeader;
+ }
+ 
+ void OMXNodeInstance::invalidateBufferID(OMX::buffer_id buffer __unused) {

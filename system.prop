@@ -6,18 +6,17 @@
 rild.libpath=/system/lib64/mtk-ril.so
 rild.libargs=-d /dev/ttyC0
 
+# Wifi
 wifi.interface=wlan0
 ro.mediatek.wlan.wsc=1
 ro.mediatek.wlan.p2p=1
 mediatek.wlan.ctia=0
 
-#
 wifi.tethering.interface=ap0
-#
-
-ro.opengles.version=196608
 
 wifi.direct.interface=p2p0
+
+# Dalvik
 dalvik.vm.heapgrowthlimit=256m
 dalvik.vm.heapsize=512m
 
@@ -33,22 +32,26 @@ ro.sys.usb.storage.type=mtp,mass_storage
 ro.sys.usb.bicr=no
 
 # USB Charge only function
-# ro.sys.usb.charging.only=yes
+ro.sys.usb.charging.only=yes
 
-# display density
+# Graphics
+ro.opengles.version=196609
 ro.sf.lcd_density=440
+# Disable dirty region for Mali
+debug.hwui.render_dirty_regions=false
 
 # audio
 ro.camera.sound.forced=0
 ro.audio.silent=0
 persist.audio.dirac.speaker=true
 
+# Camera
+camera.disable_zsl_mode=1
+
 ro.zygote.preload.enable=0
 
 ro.kernel.zio=38,108,105,16
 
-# Disable dirty region for Mali
-debug.hwui.render_dirty_regions=false
 
 # button jack mode & switch
 persist.sys.button_jack_profile=volume
@@ -159,12 +162,10 @@ persist.sys.isUsbOtgEnabled=true
 persist.debug.wfd.enable=1
 
 ro.kernel.android.checkjni=0
-ro.telephony.ril_class=MediaTekRIL
+ro.telephony.ril_class=MT6753
 ro.telephony.ril.config=fakeiccid
 persist.call_recording.enabled=true
 persist.call_recording.src=1
 
-persist.radio.mobile.data=0,0
-
 # OTA
-cm.updater.uri=https://ota.cm.mkoas.de/api
+cm.updater.uri=https://visi0nary.de/api

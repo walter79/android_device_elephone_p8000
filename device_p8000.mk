@@ -1,59 +1,52 @@
-$(call inherit-product, device/mediatek/mt6753_common/device_mt6753.mk)
-$(call inherit-product, vendor/elephone/p8000/p8000-vendor.mk)
+#
+# Copyright (C) 2015-2016 The CyanogenMod Project
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 
-DEVICE_PACKAGE_OVERLAYS += device/elephone/p8000/overlay
-
+# Screen density
 # Device uses high-density artwork where available
-PRODUCT_AAPT_CONFIG := normal xhdpi xxhdpi
+PRODUCT_AAPT_CONFIG := normal hdpi xhdpi xxhdpi
 PRODUCT_AAPT_PREF_CONFIG := xxhdpi
 
-# Recovery allowed devices
-TARGET_OTA_ASSERT_DEVICE := p8000,k05ts_a
+# Lots of fonts
+EXTENDED_FONT_FOOTPRINT := true
+USE_MINIKIN := true
 
-ifeq ($(TARGET_PREBUILT_KERNEL),)
-	LOCAL_KERNEL := device/elephone/p8000/prebuilt/kernel
-else
-	LOCAL_KERNEL := $(TARGET_PREBUILT_KERNEL)
-endif
+# Device specific overlays
+DEVICE_PACKAGE_OVERLAYS += $(LOCAL_PATH)/overlay
 
-# init.rc's
-PRODUCT_COPY_FILES += \
-	device/elephone/p8000/rootdir/init.mt6735.rc:root/init.mt6735.rc \
-	device/elephone/p8000/rootdir/init.ssd.rc:root/init.ssd.rc \
-	device/elephone/p8000/rootdir/init.xlog.rc:root/init.xlog.rc \
-	device/elephone/p8000/rootdir/init.rc:root/init.rc \
-	device/elephone/p8000/rootdir/init.mt6735.usb.rc:root/init.mt6735.usb.rc \
-	device/elephone/p8000/rootdir/init.recovery.mt6735.rc:root/init.recovery.mt6735.rc \
-	device/elephone/p8000/rootdir/init.project.rc:root/init.project.rc \
-	device/elephone/p8000/rootdir/init.modem.rc:root/init.modem.rc \
-	device/elephone/p8000/recovery/root/fstab.mt6753:root/fstab.mt6735  \
-	device/elephone/p8000/rootdir/ueventd.mt6735.rc:root/ueventd.mt6735.rc \
-	device/elephone/p8000/rootdir/factory_init.rc:root/factory_init.rc \
-	device/elephone/p8000/rootdir/factory_init.project.rc:root/factory_init.project.rc \
-	device/elephone/p8000/rootdir/meta_init.project.rc:root/meta_init.project.rc \
-	device/elephone/p8000/rootdir/meta_init.modem.rc:root/meta_init.modem.rc \
-	device/elephone/p8000/rootdir/meta_init.rc:root/meta_init.rc 
+# Device product elements
+include $(LOCAL_PATH)/product/*.mk
 
-# TWRP thanks to Hanuma50
-PRODUCT_COPY_FILES += device/elephone/p8000/recovery/twrp.fstab:recovery/root/etc/twrp.fstab
+# Dalvik heap configurations
+$(call inherit-product-if-exists, frameworks/native/build/phone-xxhdpi-3072-dalvik-heap.mk)
 
-# Fingerprint support
-PRODUCT_PACKAGES += fp
-PRODUCT_PACKAGES += slfpcal
-PRODUCT_PACKAGES += libslfpjni
-PRODUCT_PACKAGES += libsileadinc_dev
+# Call hwui memory config
+$(call inherit-product-if-exists, frameworks/native/build/phone-xxhdpi-3072-hwui-memory.mk)
 
-include device/elephone/p8000/Fingerprint/slfpcal/Android.mk
-include device/elephone/p8000/Fingerprint/fp/Android.mk
+# Product common configurations
+$(call inherit-product, $(SRC_TARGET_DIR)/product/core_64_bit.mk)
+$(call inherit-product, $(SRC_TARGET_DIR)/product/full_base_telephony.mk)
+$(call inherit-product, $(SRC_TARGET_DIR)/product/languages_full.mk)
 
+# Vendor product configurations
+$(call inherit-product-if-exists, vendor/elephone/p8000/p8000-vendor.mk)
 
-PRODUCT_COPY_FILES += \
-    	device/elephone/p8000/rootdir/etc/hostapd_default.conf:system/etc/hostapd/hostapd_default.conf \
+# The gps config appropriate for this device
+$(call inherit-product, device/common/gps/gps_us_supl.mk)
 
-# limit dex2oat threads to improve thermals
-PRODUCT_PROPERTY_OVERRIDES += \
-    	dalvik.vm.boot-dex2oat-threads=4 \
-    	dalvik.vm.dex2oat-threads=2 \
-    	dalvik.vm.image-dex2oat-threads=4
+# SELinux
+BOARD_SEPOLICY_DIRS := \
+       $(LOCAL_PATH)/sepolicy
 
-$(call inherit-product, build/target/product/full.mk)

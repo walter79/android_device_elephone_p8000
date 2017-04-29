@@ -1,0 +1,45 @@
+From ad1b3f57d3b5bbf3fb02b129f7f6f5dc4c9bccfd Mon Sep 17 00:00:00 2001
+From: Wang Xuerui <idontknw.wang@gmail.com>
+Date: Mon, 13 Jun 2016 00:46:23 +0800
+Subject: [PATCH] workaround Meizu legacy camera blob crash
+
+Change-Id: I4732fa2c7652309c83487f66b5e390ec9f32af9a
+---
+ Android.mk | 7 +++++++
+ jcapimin.c | 2 ++
+ 2 files changed, 9 insertions(+)
+
+diff --git a/Android.mk b/Android.mk
+index 0ed4d3e..ea05886 100644
+--- a/Android.mk
++++ b/Android.mk
+@@ -62,6 +62,13 @@ ifeq ($(strip $(TARGET_ARCH)),mips)
+   endif
+ endif
+ 
++# workaround Meizu camera blob passing wrong struct sizes
++ifeq ($(BOARD_HAS_MTK_HARDWARE),true)
++ifeq ($(BOARD_USES_LEGACY_MTK_AV_BLOB),true)
++LOCAL_CFLAGS += -DUSE_LEGACY_MTK_AV_BLOB
++endif
++endif
++
+ LOCAL_MODULE := libjpeg_static
+ 
+ include $(BUILD_STATIC_LIBRARY)
+diff --git a/jcapimin.c b/jcapimin.c
+index 54fb8c5..a1d39c3 100644
+--- a/jcapimin.c
++++ b/jcapimin.c
+@@ -35,9 +35,11 @@ jpeg_CreateCompress (j_compress_ptr cinfo, int version, size_t structsize)
+   cinfo->mem = NULL;		/* so jpeg_destroy knows mem mgr not called */
+   if (version != JPEG_LIB_VERSION)
+     ERREXIT2(cinfo, JERR_BAD_LIB_VERSION, JPEG_LIB_VERSION, version);
++#ifndef USE_LEGACY_MTK_AV_BLOB
+   if (structsize != SIZEOF(struct jpeg_compress_struct))
+     ERREXIT2(cinfo, JERR_BAD_STRUCT_SIZE, 
+ 	     (int) SIZEOF(struct jpeg_compress_struct), (int) structsize);
++#endif
+ 
+   /* For debugging purposes, we zero the whole master structure.
+    * But the application has already set the err pointer, and may have set

@@ -1,0 +1,378 @@
+From 5cfb831fc377f7217fbd07d060b9867b388ac058 Mon Sep 17 00:00:00 2001
+From: fire855 <thefire855@gmail.com>
+Date: Tue, 19 Apr 2016 20:13:17 +0200
+Subject: [PATCH] Compiling fixes
+
+Change-Id: Iecf9204e986beee3b7283a4f5a8a5ff6b370618b
+---
+ include/gui/BufferQueueProducer.h                  |  1 +
+ include/gui/IGraphicBufferConsumer.h               |  1 -
+ libs/gui/BufferQueue.cpp                           |  4 +--
+ libs/gui/BufferQueueConsumer.cpp                   | 34 +++-------------------
+ libs/gui/ConsumerBase.cpp                          | 17 ++---------
+ libs/gui/CpuConsumer.cpp                           |  2 +-
+ libs/gui/GLConsumer.cpp                            | 20 +++----------
+ libs/gui/IGraphicBufferConsumer.cpp                | 22 ++------------
+ libs/gui/StreamSplitter.cpp                        |  2 +-
+ .../DisplayHardware/FramebufferSurface.cpp         |  2 +-
+ .../DisplayHardware/VirtualDisplaySurface.cpp      |  2 +-
+ services/surfaceflinger/SurfaceFlingerConsumer.cpp | 14 ++++-----
+ services/surfaceflinger/SurfaceFlingerConsumer.h   |  3 +-
+ 13 files changed, 27 insertions(+), 97 deletions(-)
+
+diff --git a/include/gui/BufferQueueProducer.h b/include/gui/BufferQueueProducer.h
+index 9754a89..65ce96a 100644
+--- a/include/gui/BufferQueueProducer.h
++++ b/include/gui/BufferQueueProducer.h
+@@ -19,6 +19,7 @@
+ 
+ #include <gui/BufferQueueDefs.h>
+ #include <gui/IGraphicBufferProducer.h>
++#include <utils/Condition.h>
+ 
+ namespace android {
+ 
+diff --git a/include/gui/IGraphicBufferConsumer.h b/include/gui/IGraphicBufferConsumer.h
+index 876e750..42e491f 100644
+--- a/include/gui/IGraphicBufferConsumer.h
++++ b/include/gui/IGraphicBufferConsumer.h
+@@ -34,7 +34,6 @@
+ namespace android {
+ // ----------------------------------------------------------------------------
+ 
+-class BufferItem;
+ class Fence;
+ class GraphicBuffer;
+ class IConsumerListener;
+diff --git a/libs/gui/BufferQueue.cpp b/libs/gui/BufferQueue.cpp
+index fcca07a..8af6730 100644
+--- a/libs/gui/BufferQueue.cpp
++++ b/libs/gui/BufferQueue.cpp
+@@ -97,7 +97,7 @@ status_t BufferQueue::requestBuffer(int slot, sp<GraphicBuffer>* buf) {
+ 
+ status_t BufferQueue::dequeueBuffer(int *outBuf, sp<Fence>* outFence, bool async,
+         uint32_t w, uint32_t h, uint32_t format, uint32_t usage) {
+-    return mProducer->dequeueBuffer(outBuf, outFence, async, w, h, format, usage);
++    return mProducer->dequeueBuffer(outBuf, outFence, async, w, h, static_cast<PixelFormat>(format), usage);
+ }
+ 
+ status_t BufferQueue::detachProducerBuffer(int slot) {
+@@ -189,7 +189,7 @@ void BufferQueue::setConsumerName(const String8& name) {
+ }
+ 
+ status_t BufferQueue::setDefaultBufferFormat(uint32_t defaultFormat) {
+-    return mConsumer->setDefaultBufferFormat(defaultFormat);
++    return mConsumer->setDefaultBufferFormat(static_cast<PixelFormat>(defaultFormat));
+ }
+ 
+ status_t BufferQueue::setConsumerUsageBits(uint32_t usage) {
+diff --git a/libs/gui/BufferQueueConsumer.cpp b/libs/gui/BufferQueueConsumer.cpp
+index 3b1fbec..1ff4700 100644
+--- a/libs/gui/BufferQueueConsumer.cpp
++++ b/libs/gui/BufferQueueConsumer.cpp
+@@ -40,7 +40,7 @@ BufferQueueConsumer::BufferQueueConsumer(const sp<BufferQueueCore>& core) :
+ BufferQueueConsumer::~BufferQueueConsumer() {}
+ 
+ status_t BufferQueueConsumer::acquireBuffer(BufferItem* outBuffer,
+-        nsecs_t expectedPresent, uint64_t maxFrameNumber) {
++        nsecs_t expectedPresent) {
+     ATRACE_CALL();
+ 
+     int numDroppedBuffers = 0;
+@@ -100,12 +100,6 @@ status_t BufferQueueConsumer::acquireBuffer(BufferItem* outBuffer,
+             while (mCore->mQueue.size() > 1 && !mCore->mQueue[0].mIsAutoTimestamp) {
+                 const BufferItem& bufferItem(mCore->mQueue[1]);
+ 
+-                // If dropping entry[0] would leave us with a buffer that the
+-                // consumer is not yet ready for, don't drop it.
+-                if (maxFrameNumber && bufferItem.mFrameNumber > maxFrameNumber) {
+-                    break;
+-                }
+-
+                 // If entry[1] is timely, drop entry[0] (and repeat). We apply an
+                 // additional criterion here: we only drop the earlier buffer if our
+                 // desiredPresent falls within +/- 1 second of the expected present.
+@@ -147,16 +141,12 @@ status_t BufferQueueConsumer::acquireBuffer(BufferItem* outBuffer,
+             nsecs_t desiredPresent = front->mTimestamp;
+             bool bufferIsDue = desiredPresent <= expectedPresent ||
+                     desiredPresent > expectedPresent + MAX_REASONABLE_NSEC;
+-            bool consumerIsReady = maxFrameNumber > 0 ?
+-                    front->mFrameNumber <= maxFrameNumber : true;
+-            if (!bufferIsDue || !consumerIsReady) {
++            if (!bufferIsDue) {
+                 BQ_LOGV("acquireBuffer: defer desire=%" PRId64 " expect=%" PRId64
+-                        " (%" PRId64 ") now=%" PRId64 " frame=%" PRIu64
+-                        " consumer=%" PRIu64,
++                        " (%" PRId64 ") now=%" PRId64,
+                         desiredPresent, expectedPresent,
+                         desiredPresent - expectedPresent,
+-                        systemTime(CLOCK_MONOTONIC),
+-                        front->mFrameNumber, maxFrameNumber);
++                        systemTime(CLOCK_MONOTONIC));
+                 return PRESENT_LATER;
+             }
+ 
+@@ -208,22 +198,6 @@ status_t BufferQueueConsumer::acquireBuffer(BufferItem* outBuffer,
+     return NO_ERROR;
+ }
+ 
+-status_t BufferQueueConsumer::acquireBuffer(android::BufferItem* outBuffer,
+-        nsecs_t expectedPresent) {
+-    if (outBuffer == nullptr) {
+-        return BAD_VALUE;
+-    }
+-
+-    BufferItem item;
+-    status_t result = acquireBuffer(&item, expectedPresent);
+-    if (result != NO_ERROR) {
+-        return result;
+-    }
+-
+-    *outBuffer = item;
+-    return NO_ERROR;
+-}
+-
+ status_t BufferQueueConsumer::detachBuffer(int slot) {
+     ATRACE_CALL();
+     ATRACE_BUFFER_INDEX(slot);
+diff --git a/libs/gui/ConsumerBase.cpp b/libs/gui/ConsumerBase.cpp
+index a62e2c2..0b655d9 100644
+--- a/libs/gui/ConsumerBase.cpp
++++ b/libs/gui/ConsumerBase.cpp
+@@ -216,9 +216,9 @@ void ConsumerBase::dumpLocked(String8& result, const char* prefix) const {
+     }
+ }
+ 
+-status_t ConsumerBase::acquireBufferLocked(BufferItem *item,
+-        nsecs_t presentWhen, uint64_t maxFrameNumber) {
+-    status_t err = mConsumer->acquireBuffer(item, presentWhen, maxFrameNumber);
++status_t ConsumerBase::acquireBufferLocked(BufferQueue::BufferItem *item,
++        nsecs_t presentWhen) {
++    status_t err = mConsumer->acquireBuffer(item, presentWhen);
+     if (err != NO_ERROR) {
+         return err;
+     }
+@@ -236,17 +236,6 @@ status_t ConsumerBase::acquireBufferLocked(BufferItem *item,
+     return OK;
+ }
+ 
+-status_t ConsumerBase::acquireBufferLocked(BufferQueue::BufferItem *outItem,
+-        nsecs_t presentWhen) {
+-    BufferItem item;
+-    status_t result = acquireBufferLocked(&item, presentWhen);
+-    if (result != NO_ERROR) {
+-        return result;
+-    }
+-    *outItem = item;
+-    return NO_ERROR;
+-}
+-
+ status_t ConsumerBase::addReleaseFence(int slot,
+         const sp<GraphicBuffer> graphicBuffer, const sp<Fence>& fence) {
+     Mutex::Autolock lock(mMutex);
+diff --git a/libs/gui/CpuConsumer.cpp b/libs/gui/CpuConsumer.cpp
+index e29b740..ad22b37 100644
+--- a/libs/gui/CpuConsumer.cpp
++++ b/libs/gui/CpuConsumer.cpp
+@@ -92,7 +92,7 @@ status_t CpuConsumer::lockNextBuffer(LockedBuffer *nativeBuffer) {
+         return NOT_ENOUGH_DATA;
+     }
+ 
+-    BufferItem b;
++    BufferQueue::BufferItem b;
+ 
+     Mutex::Autolock _l(mMutex);
+ 
+diff --git a/libs/gui/GLConsumer.cpp b/libs/gui/GLConsumer.cpp
+index 5cb77de..39b450c 100644
+--- a/libs/gui/GLConsumer.cpp
++++ b/libs/gui/GLConsumer.cpp
+@@ -211,7 +211,7 @@ status_t GLConsumer::updateTexImage() {
+         return err;
+     }
+ 
+-    BufferItem item;
++    BufferQueue::BufferItem item;
+ 
+     // Acquire the next buffer.
+     // In asynchronous mode the list is guaranteed to be one buffer
+@@ -343,10 +343,9 @@ sp<GraphicBuffer> GLConsumer::getDebugTexImageBuffer() {
+     return sReleasedTexImageBuffer;
+ }
+ 
+-status_t GLConsumer::acquireBufferLocked(BufferItem *item,
+-        nsecs_t presentWhen, uint64_t maxFrameNumber) {
+-    status_t err = ConsumerBase::acquireBufferLocked(item, presentWhen,
+-            maxFrameNumber);
++status_t GLConsumer::acquireBufferLocked(BufferQueue::BufferItem *item,
++        nsecs_t presentWhen) {
++    status_t err = ConsumerBase::acquireBufferLocked(item, presentWhen);
+     if (err != NO_ERROR) {
+         return err;
+     }
+@@ -362,17 +361,6 @@ status_t GLConsumer::acquireBufferLocked(BufferItem *item,
+     return NO_ERROR;
+ }
+ 
+-status_t GLConsumer::acquireBufferLocked(BufferQueue::BufferItem *outItem,
+-        nsecs_t presentWhen) {
+-    BufferItem item;
+-    status_t result = acquireBufferLocked(&item, presentWhen);
+-    if (result != NO_ERROR) {
+-        return result;
+-    }
+-    *outItem = item;
+-    return NO_ERROR;
+-}
+-
+ status_t GLConsumer::releaseBufferLocked(int buf,
+         sp<GraphicBuffer> graphicBuffer,
+         EGLDisplay display, EGLSyncKHR eglFence) {
+diff --git a/libs/gui/IGraphicBufferConsumer.cpp b/libs/gui/IGraphicBufferConsumer.cpp
+index 1855a0f..dde8275 100644
+--- a/libs/gui/IGraphicBufferConsumer.cpp
++++ b/libs/gui/IGraphicBufferConsumer.cpp
+@@ -223,12 +223,10 @@ class BpGraphicBufferConsumer : public BpInterface<IGraphicBufferConsumer>
+ 
+     virtual ~BpGraphicBufferConsumer();
+ 
+-    virtual status_t acquireBuffer(BufferItem *buffer, nsecs_t presentWhen,
+-            uint64_t maxFrameNumber) {
++    virtual status_t acquireBuffer(BufferItem *buffer, nsecs_t presentWhen) {
+         Parcel data, reply;
+         data.writeInterfaceToken(IGraphicBufferConsumer::getInterfaceDescriptor());
+         data.writeInt64(presentWhen);
+-        data.writeUint64(maxFrameNumber);
+         status_t result = remote()->transact(ACQUIRE_BUFFER, data, &reply);
+         if (result != NO_ERROR) {
+             return result;
+@@ -240,21 +238,6 @@ class BpGraphicBufferConsumer : public BpInterface<IGraphicBufferConsumer>
+         return reply.readInt32();
+     }
+ 
+-    virtual status_t acquireBuffer(android::BufferItem* buffer,
+-            nsecs_t presentWhen) {
+-        if (buffer == nullptr) {
+-            return BAD_VALUE;
+-        }
+-
+-        BufferItem item;
+-        status_t result = acquireBuffer(&item, presentWhen);
+-        if (result != NO_ERROR) {
+-            return result;
+-        }
+-        *buffer = item;
+-        return NO_ERROR;
+-    }
+-
+     virtual status_t detachBuffer(int slot) {
+         Parcel data, reply;
+         data.writeInterfaceToken(IGraphicBufferConsumer::getInterfaceDescriptor());
+@@ -469,8 +452,7 @@ status_t BnGraphicBufferConsumer::onTransact(
+             CHECK_INTERFACE(IGraphicBufferConsumer, data, reply);
+             BufferItem item;
+             int64_t presentWhen = data.readInt64();
+-            uint64_t maxFrameNumber = data.readUint64();
+-            status_t result = acquireBuffer(&item, presentWhen, maxFrameNumber);
++            status_t result = acquireBuffer(&item, presentWhen);
+             status_t err = reply->write(item);
+             if (err) return err;
+             reply->writeInt32(result);
+diff --git a/libs/gui/StreamSplitter.cpp b/libs/gui/StreamSplitter.cpp
+index 43f9214..0823d45 100644
+--- a/libs/gui/StreamSplitter.cpp
++++ b/libs/gui/StreamSplitter.cpp
+@@ -124,7 +124,7 @@ void StreamSplitter::onFrameAvailable(const BufferItem& /* item */) {
+     ++mOutstandingBuffers;
+ 
+     // Acquire and detach the buffer from the input
+-    BufferItem bufferItem;
++    IGraphicBufferConsumer::BufferItem bufferItem;
+     status_t status = mInput->acquireBuffer(&bufferItem, /* presentWhen */ 0);
+     LOG_ALWAYS_FATAL_IF(status != NO_ERROR,
+             "acquiring buffer from input failed (%d)", status);
+diff --git a/services/surfaceflinger/DisplayHardware/FramebufferSurface.cpp b/services/surfaceflinger/DisplayHardware/FramebufferSurface.cpp
+index 70af656..55d9d26 100644
+--- a/services/surfaceflinger/DisplayHardware/FramebufferSurface.cpp
++++ b/services/surfaceflinger/DisplayHardware/FramebufferSurface.cpp
+@@ -88,7 +88,7 @@ status_t FramebufferSurface::advanceFrame() {
+ status_t FramebufferSurface::nextBuffer(sp<GraphicBuffer>& outBuffer, sp<Fence>& outFence) {
+     Mutex::Autolock lock(mMutex);
+ 
+-    BufferItem item;
++    BufferQueue::BufferItem item;
+     status_t err = acquireBufferLocked(&item, 0);
+     if (err == BufferQueue::NO_BUFFER_AVAILABLE) {
+         outBuffer = mCurrentBuffer;
+diff --git a/services/surfaceflinger/DisplayHardware/VirtualDisplaySurface.cpp b/services/surfaceflinger/DisplayHardware/VirtualDisplaySurface.cpp
+index 5fd2136..99fe1f1 100644
+--- a/services/surfaceflinger/DisplayHardware/VirtualDisplaySurface.cpp
++++ b/services/surfaceflinger/DisplayHardware/VirtualDisplaySurface.cpp
+@@ -446,7 +446,7 @@ status_t VirtualDisplaySurface::queueBuffer(int pslot,
+         // Now acquire the buffer from the scratch pool -- should be the same
+         // slot and fence as we just queued.
+         Mutex::Autolock lock(mMutex);
+-        BufferItem item;
++        BufferQueue::BufferItem item;
+         result = acquireBufferLocked(&item, 0);
+         if (result != NO_ERROR)
+             return result;
+diff --git a/services/surfaceflinger/SurfaceFlingerConsumer.cpp b/services/surfaceflinger/SurfaceFlingerConsumer.cpp
+index ed1f31b..9bdfa7c 100644
+--- a/services/surfaceflinger/SurfaceFlingerConsumer.cpp
++++ b/services/surfaceflinger/SurfaceFlingerConsumer.cpp
+@@ -34,6 +34,7 @@ namespace android {
+ status_t SurfaceFlingerConsumer::updateTexImage(BufferRejecter* rejecter,
+         const DispSync& dispSync, uint64_t maxFrameNumber)
+ {
++    (void)maxFrameNumber;
+     ATRACE_CALL();
+     ALOGV("updateTexImage");
+     Mutex::Autolock lock(mMutex);
+@@ -49,13 +50,12 @@ status_t SurfaceFlingerConsumer::updateTexImage(BufferRejecter* rejecter,
+         return err;
+     }
+ 
+-    BufferItem item;
++    BufferQueue::BufferItem item;
+ 
+     // Acquire the next buffer.
+     // In asynchronous mode the list is guaranteed to be one buffer
+     // deep, while in synchronous mode we use the oldest buffer.
+-    err = acquireBufferLocked(&item, computeExpectedPresent(dispSync),
+-            maxFrameNumber);
++    err = acquireBufferLocked(&item, computeExpectedPresent(dispSync));
+     if (err != NO_ERROR) {
+         if (err == BufferQueue::NO_BUFFER_AVAILABLE) {
+             err = NO_ERROR;
+@@ -104,13 +104,11 @@ status_t SurfaceFlingerConsumer::bindTextureImage()
+     return bindTextureImageLocked();
+ }
+ 
+-status_t SurfaceFlingerConsumer::acquireBufferLocked(BufferItem* item,
+-        nsecs_t presentWhen, uint64_t maxFrameNumber) {
+-    status_t result = GLConsumer::acquireBufferLocked(item, presentWhen,
+-            maxFrameNumber);
++status_t SurfaceFlingerConsumer::acquireBufferLocked(BufferQueue::BufferItem* item,
++        nsecs_t presentWhen) {
++    status_t result = GLConsumer::acquireBufferLocked(item, presentWhen);
+     if (result == NO_ERROR) {
+         mTransformToDisplayInverse = item->mTransformToDisplayInverse;
+-        mSurfaceDamage = item->mSurfaceDamage;
+     }
+     return result;
+ }
+diff --git a/services/surfaceflinger/SurfaceFlingerConsumer.h b/services/surfaceflinger/SurfaceFlingerConsumer.h
+index 779e5b7..8ad6b8c 100644
+--- a/services/surfaceflinger/SurfaceFlingerConsumer.h
++++ b/services/surfaceflinger/SurfaceFlingerConsumer.h
+@@ -49,8 +49,7 @@ class SurfaceFlingerConsumer : public GLConsumer {
+         virtual ~BufferRejecter() { }
+     };
+ 
+-    virtual status_t acquireBufferLocked(BufferItem *item, nsecs_t presentWhen,
+-            uint64_t maxFrameNumber = 0) override;
++    virtual status_t acquireBufferLocked(BufferQueue::BufferItem *item, nsecs_t presentWhen);
+ 
+     // This version of updateTexImage() takes a functor that may be used to
+     // reject the newly acquired buffer.  Unlike the GLConsumer version,

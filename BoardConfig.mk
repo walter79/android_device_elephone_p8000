@@ -1,53 +1,71 @@
-# include proprietary libraries and binaries
--include vendor/elephone/p8000/BoardConfigVendor.mk
+#
+# Copyright (C) 2016 The CyanogenMod Project
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 
-# Bootloader
-TARGET_BOOTLOADER_BOARD_NAME := Auxus_PRIME_201
+# Device path
+LOCAL_PATH := device/elephone/p8000
 
-# Specify MT6753 variant
-TARGET_IS_MT6753 := true
+# Device board elements
+include $(LOCAL_PATH)/PlatformConfig.mk
+include $(LOCAL_PATH)/board/*.mk
 
-# needed for mass storage mode
-TARGET_USE_CUSTOM_LUN_FILE_PATH := /sys/class/android_usb/android0/f_mass_storage/lun/file
-  
-#extracted from /proc/partinfo
-BOARD_BOOTIMAGE_PARTITION_SIZE := 16777216
-BOARD_RECOVERYIMAGE_PARTITION_SIZE := 16777216
-BOARD_SYSTEMIMAGE_PARTITION_SIZE := 2147483648
-BOARD_USERDATAIMAGE_PARTITION_SIZE := 1107296256
-BOARD_CACHEIMAGE_PARTITION_SIZE := 444596224
-BOARD_FLASH_BLOCK_SIZE := 131072
+TARGET_BOOTLOADER_BOARD_NAME := mt6753
+TARGET_NO_BOOTLOADER := true
 
-# build kernel from source
-TARGET_KERNEL_SOURCE := kernel/elephone/p8000
-TARGET_KERNEL_CONFIG := p8000_cyanogenmod_defconfig
-BOARD_KERNEL_CMDLINE := bootopt=64S3,32N2,64N2
-BOARD_KERNEL_BASE := 0x40078000
-BOARD_RAMDISK_OFFSET := 0x03f88000
-BOARD_KERNEL_OFFSET := 0x00008000
-BOARD_TAGS_OFFSET := 0x0df88000
-BOARD_KERNEL_PAGESIZE := 2048
-BOARD_MKBOOTIMG_ARGS := --kernel_offset $(BOARD_KERNEL_OFFSET) --ramdisk_offset $(BOARD_RAMDISK_OFFSET) --tags_offset $(BOARD_TAGS_OFFSET)
+# misc flags
+TARGET_GLOBAL_CFLAGS   += -mfpu=neon -mfloat-abi=softfp
+TARGET_GLOBAL_CPPFLAGS += -mfpu=neon -mfloat-abi=softfp
+COMMON_GLOBAL_CFLAGS += -DNO_SECURE_DISCARD
+COMMON_GLOBAL_CFLAGS += -DDISABLE_HW_ID_MATCH_CHECK
+
+# MTK Hardware
+BOARD_USES_MTK_HARDWARE := true
+BOARD_HAS_MTK_HARDWARE := true
+BOARD_USES_LEGACY_MTK_AV_BLOB := true
+COMMON_GLOBAL_CFLAGS += -DDISABLE_ASHMEM_TRACKING
+# Mtk LP Camera Hal compat
+COMMON_GLOBAL_CFLAGS += -DCAMERA_VENDOR_L_COMPAT
+
+#TODO: rewrite gps hal (libEPOS)
+MTK_K64_SUPPORT := yes
+
+# EGL
+BOARD_EGL_CFG := $(LOCAL_PATH)/configs/egl.cfg
+USE_OPENGL_RENDERER := true
+TARGET_FORCE_HWC_FOR_VIRTUAL_DISPLAYS := true
+NUM_FRAMEBUFFER_SURFACE_BUFFERS := 3
+TARGET_RUNNING_WITHOUT_SYNC_FRAMEWORK := true
+DISABLE_ASHMEM_TRACKING := true
+BOARD_EGL_WORKAROUND_BUG_10194508 := true
+PRESENT_TIME_OFFSET_FROM_VSYNC_NS := 0
+MTK_HWC_SUPPORT := yes
+MTK_HWC_VERSION := 1.4.1
+
+# Screen resolution
+TARGET_SCREEN_HEIGHT := 1920
+TARGET_SCREEN_WIDTH := 1080
+
+# Bootanimation
+TARGET_BOOTANIMATION_NAME := 1080
+TARGET_BOOTANIMATION_PRELOAD := true
+TARGET_BOOTANIMATION_TEXTURE_CACHE := true
+TARGET_BOOTANIMATION_HALF_RES := true
 
 # system.prop
-TARGET_SYSTEM_PROP := device/elephone/p8000/system.prop
+TARGET_SYSTEM_PROP := $(LOCAL_PATH)/system.prop
 
-# CyanogenMod Hardware Hooks
-BOARD_HARDWARE_CLASS := device/elephone/p8000/cmhw/
+# Vold
+TARGET_USE_CUSTOM_LUN_FILE_PATH := /sys/class/android_usb/android0/f_mass_storage/lun/file
 
-# Bluetooth
-BOARD_BLUETOOTH_BDROID_BUILDCFG_INCLUDE_DIR := device/elephone/p8000/bluetooth
-
-# Fingerprint Sensor
-VANZO_FEATURE_ADD_SILEADINC_FP := yes
-VANZO_FEATURE_FACTORYMODE_USE_ENGLISH := yes
-
-BOARD_EGL_CFG := device/elephone/p8000/configs/egl.cfg
-
-# recovery
-#TARGET_RECOVERY_INITRC := device/elephone/p8000/recovery/init.mt6753.rc
-TARGET_RECOVERY_FSTAB := device/elephone/p8000/recovery/root/fstab.mt6753
-TARGET_RECOVERY_LCD_BACKLIGHT_PATH := \"/sys/devices/platform/leds-mt65xx/leds/lcd-backlight/brightness\"
-
-# use power button for selections in recovery
-BOARD_HAS_NO_SELECT_BUTTON := true
